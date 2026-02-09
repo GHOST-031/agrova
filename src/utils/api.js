@@ -1,5 +1,5 @@
-// API Base URL
-export const API_URL = "http://localhost:5001/api";
+// API Base URL - works on both local and production
+export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
 
 // Get auth token from localStorage
 const getToken = () => {
