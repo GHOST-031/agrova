@@ -1,0 +1,66 @@
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* Leaflet CSS */
+@import "leaflet/dist/leaflet.css";
+
+/* Custom forest theme styles */
+@layer base {
+  html {
+    font-family: "Poppins", "Inter", system-ui, sans-serif;
+  }
+
+  body {
+    @apply bg-forest-50 dark:bg-forest-950 text-forest-800 dark:text-forest-100 transition-colors duration-300;
+  }
+}
+
+@layer components {
+  /* Custom scrollbar */
+  .scrollbar-forest::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  .scrollbar-forest::-webkit-scrollbar-track {
+    @apply bg-forest-100 dark:bg-forest-900 rounded-lg;
+  }
+
+  .scrollbar-forest::-webkit-scrollbar-thumb {
+    @apply bg-forest-400 dark:bg-forest-600 rounded-lg hover:bg-forest-500 dark:hover:bg-forest-500;
+  }
+
+  /* Glass morphism effect */
+  .glass-forest {
+    @apply bg-white/10 dark:bg-forest-900/20 backdrop-blur-md border border-white/20 dark:border-forest-700/30;
+  }
+
+  /* Gradient buttons */
+  .btn-forest-primary {
+    @apply bg-forest-gradient text-white font-medium px-6 py-3 rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-forest-400 focus:ring-offset-2;
+  }
+
+  .btn-forest-secondary {
+    @apply bg-earth-gradient text-white font-medium px-6 py-3 rounded-lg hover:shadow-lg transform hover:scale-105 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-earth-400 focus:ring-offset-2;
+  }
+
+  /* Card styles */
+  .card-forest {
+    @apply bg-white dark:bg-forest-900 border border-forest-200 dark:border-forest-800 rounded-xl shadow-sm hover:shadow-md transition-all duration-200;
+  }
+
+  /* Form inputs */
+  .input-forest {
+    @apply w-full px-4 py-3 border border-forest-300 dark:border-forest-700 rounded-lg bg-white dark:bg-forest-800 text-forest-900 dark:text-forest-100 placeholder-forest-500 dark:placeholder-forest-400 focus:outline-none focus:ring-2 focus:ring-forest-500 focus:border-transparent transition-all duration-200;
+  }
+
+  /* Navigation active state */
+  .nav-active {
+    @apply bg-forest-500 text-white;
+  }
+
+  /* Hover effects */
+  .hover-forest {
+    @apply hover:bg-forest-50 dark:hover:bg-forest-800 transition-colors duration-200;
+  }
+}

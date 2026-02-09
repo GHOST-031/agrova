@@ -1,0 +1,869 @@
+import React, { useEffect, useState } from "react";
+import { motion } from "framer-motion";
+import { Search, Filter, Grid, List, SortAsc } from "lucide-react";
+import { ProductCard } from "../../components/ui/Card";
+import Button from "../../components/ui/Button";
+import ProductDetailsModal from "../../components/ui/ProductDetailsModal";
+import { useCart } from "../../contexts/CartContext";
+import { useTranslation } from "../../hooks/useTranslation";
+import { api } from "../../utils/api";
+import toast from "react-hot-toast";
+
+const ProductsPage = () => {
+  const { t } = useTranslation();
+  const [viewMode, setViewMode] = React.useState("grid");
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [selectedCategory, setSelectedCategory] = React.useState("all");
+  const [sortBy, setSortBy] = React.useState("name");
+  const [showFilters, setShowFilters] = React.useState(false);
+  const [selectedProduct, setSelectedProduct] = React.useState(null);
+  const [isModalOpen, setIsModalOpen] = React.useState(false);
+  const [allProducts, setAllProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const { addToCart } = useCart();
+
+  // Fetch products from API
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setLoading(true);
+        const response = await api.getProducts();
+        
+        // Transform API products to match component format
+        const transformedProducts = response.data.map(product => ({
+          ...product,
+          id: product._id,
+          image: product.images?.[0]?.url || "https://via.placeholder.com/400",
+          rating: product.ratings?.average || 0,
+          farmer: product.farmer ? {
+            name: product.farmer.name || "Unknown Farmer",
+            avatar: `https://ui-avatars.com/api/?name=${encodeURIComponent(product.farmer.name || "F")}&background=4a9a4a&color=fff`
+          } : {
+            name: "Unknown Farmer",
+            avatar: "https://ui-avatars.com/api/?name=F&background=4a9a4a&color=fff"
+          }
+        }));
+        
+        setAllProducts(transformedProducts);
+      } catch (error) {
+        console.error("Error fetching products:", error);
+        toast.error("Failed to load products");
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchProducts();
+  }, []);
+
+  const categories = [
+    { id: "all", name: "All Products", count: allProducts.length },
+    {
+      id: "vegetables",
+      name: "Vegetables",
+      count: allProducts.filter((p) => p.category?.name === "Vegetables" || p.category === "vegetables").length,
+    },
+    {
+      id: "fruits",
+      name: "Fruits",
+      count: allProducts.filter((p) => p.category?.name === "Fruits" || p.category === "fruits").length,
+    },
+    {
+      id: "dairy",
+      name: "Dairy",
+      count: allProducts.filter((p) => p.category?.name === "Dairy" || p.category === "dairy").length,
+    },
+    {
+      id: "grains",
+      name: "Grains",
+      count: allProducts.filter((p) => p.category?.name === "Grains" || p.category === "grains").length,
+    },
+  ];
+
+  // Filter and sort products
+  const filteredProducts = React.useMemo(() => {
+    let filtered = allProducts;
+
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (product) =>
+          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.farmer.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Filter by category
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(
+        (product) => product.category?.name?.toLowerCase() === selectedCategory || product.category === selectedCategory
+      );
+    }
+
+    // Sort products
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "price-low":
+          return a.price - b.price;
+        case "price-high":
+          return b.price - a.price;
+        case "rating":
+          return b.rating - a.rating;
+        case "name":
+        default:
+          return a.name.localeCompare(b.name);
+      }
+    });
+
+    return filtered;
+  }, [allProducts, searchTerm, selectedCategory, sortBy]);
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="text-center">
+          <p className="text-lg text-forest-600 dark:text-forest-400">Loading products...</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
+      >
+        <h1 className="text-3xl font-bold text-forest-800 dark:text-forest-100 mb-2">
+          {t("freshProducts")}
+        </h1>
+        <p className="text-forest-600 dark:text-forest-400">
+          {t("discoverFresh")}
+        </p>
+      </motion.div>
+
+      {/* Search and Filters */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="mb-8 space-y-4"
+      >
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-forest-500 dark:text-forest-400 w-5 h-5" />
+      isOrganic: true,
+      isFreshToday: true,
+      stock: 25,
+      location: "2.5 km away",
+      category: "vegetables",
+    },
+    {
+      id: 2,
+      name: "Fresh Spinach",
+      price: 30,
+      unit: "kg",
+      image:
+        "https://images.unsplash.com/photo-1576045057995-568f588f82fb?w=400&h=400&fit=crop",
+      farmer: {
+        name: "Sunita Devi",
+        avatar:
+          "https://ui-avatars.com/api/?name=Sunita+Devi&background=4a9a4a&color=fff",
+      },
+      rating: 4.9,
+      isOrganic: true,
+      stock: 15,
+      location: "1.8 km away",
+      category: "vegetables",
+    },
+    {
+      id: 3,
+      name: "Farm Fresh Eggs",
+      price: 8,
+      unit: "dozen",
+      image:
+        "https://media.istockphoto.com/id/2222296828/photo/fresh-brown-eggs-displayed-for-sale-at-a-local-poultry-market-in-bangladesh-poultry-eggs.webp?a=1&b=1&s=612x612&w=0&k=20&c=z-QPFaNn2nrEJQEpPhqV32c3Ev7-XmxY3l4MMZa3WwY=",
+      farmer: {
+        name: "Amit Singh",
+        avatar:
+          "https://ui-avatars.com/api/?name=Amit+Singh&background=4a9a4a&color=fff",
+      },
+      rating: 4.7,
+      isFreshToday: true,
+      stock: 50,
+      location: "3.2 km away",
+      category: "dairy",
+    },
+    {
+      id: 4,
+      name: "Organic Carrots",
+      price: 35,
+      unit: "kg",
+      image:
+        "https://images.unsplash.com/photo-1598170845058-32b9d6a5da37?w=400&h=400&fit=crop",
+      farmer: {
+        name: "Priya Sharma",
+        avatar:
+          "https://ui-avatars.com/api/?name=Priya+Sharma&background=4a9a4a&color=fff",
+      },
+      rating: 4.6,
+      isOrganic: true,
+      stock: 20,
+      location: "1.5 km away",
+      category: "vegetables",
+    },
+    {
+      id: 5,
+      name: "Bell Peppers",
+      price: 80,
+      unit: "kg",
+      image:
+        "https://media.istockphoto.com/id/137350104/photo/green-peppers.webp?a=1&b=1&s=612x612&w=0&k=20&c=7u2DZpZoSZIWkSDyvAbxkvNU09BrvPdQCPzM4LcsxvU=",
+      farmer: {
+        name: "Rajesh Gupta",
+        avatar:
+          "https://ui-avatars.com/api/?name=Rajesh+Gupta&background=4a9a4a&color=fff",
+      },
+      rating: 4.5,
+      stock: 30,
+      location: "4.1 km away",
+      category: "vegetables",
+    },
+    {
+      id: 6,
+      name: "Fresh Milk",
+      price: 60,
+      unit: "liter",
+      image:
+        "https://images.unsplash.com/photo-1550583724-b2692b25a968?w=400&h=400&fit=crop",
+      farmer: {
+        name: "Krishna Devi",
+        avatar:
+          "https://ui-avatars.com/api/?name=Krishna+Devi&background=4a9a4a&color=fff",
+      },
+      rating: 4.9,
+      isFreshToday: true,
+      stock: 40,
+      location: "2.8 km away",
+      category: "dairy",
+    },
+    {
+      id: 7,
+      name: "Broccoli",
+      price: 50,
+      unit: "kg",
+      image:
+        "https://media.istockphoto.com/id/518951178/photo/fresh-raw-green-broccoli-in-bowl.webp?a=1&b=1&s=612x612&w=0&k=20&c=bKY-ggS9Dt0GjenJTH8p4dKAx8e8BG3CBrq4Ji36ccw=",
+      farmer: {
+        name: "Vikram Patel",
+        avatar:
+          "https://ui-avatars.com/api/?name=Vikram+Patel&background=4a9a4a&color=fff",
+      },
+      rating: 4.7,
+      isOrganic: true,
+      isFreshToday: true,
+      stock: 18,
+      location: "2.2 km away",
+      category: "vegetables",
+    },
+    {
+      id: 8,
+      name: "Green Beans",
+      price: 55,
+      unit: "kg",
+      image:
+        "https://images.unsplash.com/photo-1574963835594-61eede2070dc?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1074",
+      farmer: {
+        name: "Meera Singh",
+        avatar:
+          "https://ui-avatars.com/api/?name=Meera+Singh&background=4a9a4a&color=fff",
+      },
+      rating: 4.8,
+      stock: 22,
+      location: "3.5 km away",
+      category: "vegetables",
+    },
+    {
+      id: 9,
+      name: "Organic Potatoes",
+      price: 120,
+      unit: "kg",
+      image:
+        "https://images.unsplash.com/photo-1686544303141-cc0bd819d400?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687",
+      farmer: {
+        name: "Harish Kumar",
+        avatar:
+          "https://ui-avatars.com/api/?name=Harish+Kumar&background=4a9a4a&color=fff",
+      },
+      rating: 4.9,
+      isFreshToday: true,
+      stock: 35,
+      location: "5.1 km away",
+      category: "vegetables",
+    },
+    {
+      id: 10,
+      name: "Cucumber",
+      price: 40,
+      unit: "kg",
+      image:
+        "https://images.unsplash.com/photo-1449300079323-02e209d9d3a6?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=1074",
+      farmer: {
+        name: "Suresh Nair",
+        avatar:
+          "https://ui-avatars.com/api/?name=Suresh+Nair&background=4a9a4a&color=fff",
+      },
+      rating: 4.6,
+      stock: 45,
+      location: "2.9 km away",
+      category: "vegetables",
+    },
+    {
+      id: 11,
+      name: "Onions",
+      price: 150,
+      unit: "kg",
+      image:
+        "https://plus.unsplash.com/premium_photo-1668076517573-fa01307d87ad?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8b25pb258ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&q=60&w=600",
+      farmer: {
+        name: "Anjali Verma",
+        avatar:
+          "https://ui-avatars.com/api/?name=Anjali+Verma&background=4a9a4a&color=fff",
+      },
+      rating: 4.8,
+      stock: 12,
+      location: "4.3 km away",
+      category: "vegetables",
+    },
+    {
+      id: 12,
+      name: "Garlic",
+      price: 90,
+      unit: "kg",
+      image:
+        "https://images.unsplash.com/photo-1585518478519-b21cc028cb46?w=500&h=500&fit=crop",
+      farmer: {
+        name: "Deepak Sharma",
+        avatar:
+          "https://ui-avatars.com/api/?name=Deepak+Sharma&background=4a9a4a&color=fff",
+      },
+      rating: 4.7,
+      isOrganic: true,
+      stock: 28,
+      location: "2.1 km away",
+      category: "vegetables",
+    },
+    {
+      id: 13,
+      name: "Fresh Cheese (Paneer)",
+      price: 220,
+      unit: "kg",
+      image:
+        "https://media.istockphoto.com/id/464765760/photo/cutting-paneer-into-pieces.webp?a=1&b=1&s=612x612&w=0&k=20&c=QNJ3G86tx0P-J8xonege3k_bFOGdpvilas_r71xfV98=",
+      farmer: {
+        name: "Ramesh Singh",
+        avatar:
+          "https://ui-avatars.com/api/?name=Ramesh+Singh&background=4a9a4a&color=fff",
+      },
+      rating: 4.9,
+      isFreshToday: true,
+      stock: 16,
+      location: "3.8 km away",
+      category: "dairy",
+    },
+    {
+      id: 14,
+      name: "Organic Wheat Flour",
+      price: 45,
+      unit: "kg",
+      image:
+        "https://media.istockphoto.com/id/186831897/photo/flour-and-wheat-grains.webp?a=1&b=1&s=612x612&w=0&k=20&c=XRT7ZyZ4Az7pAKptVXnsmcogDwwMBgqNncX7YuJJmFo=",
+      farmer: {
+        name: "Govind Tiwari",
+        avatar:
+          "https://ui-avatars.com/api/?name=Govind+Tiwari&background=4a9a4a&color=fff",
+      },
+      rating: 4.6,
+      isOrganic: true,
+      stock: 50,
+      location: "6.2 km away",
+      category: "grains",
+    },
+    {
+      id: 15,
+      name: "Brown Rice",
+      price: 55,
+      unit: "kg",
+      image:
+        "https://plus.unsplash.com/premium_photo-1671130295823-78f170465794?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8MXx8YnJvd24lMjByaWNlfGVufDB8fDB8fHww&auto=format&fit=crop&q=60&w=600",
+      farmer: {
+        name: "Mohan Reddy",
+        avatar:
+          "https://ui-avatars.com/api/?name=Mohan+Reddy&background=4a9a4a&color=fff",
+      },
+      rating: 4.7,
+      stock: 60,
+      location: "5.8 km away",
+      category: "grains",
+    },
+    {
+      id: 16,
+      name: "Fresh Cucumber",
+      price: 25,
+      unit: "kg",
+      image:
+        "https://images.unsplash.com/photo-1604977527235-1f6ca8357e1e?w=400&h=400&fit=crop",
+      farmer: {
+        name: "Arjun Desai",
+        avatar:
+          "https://ui-avatars.com/api/?name=Arjun+Desai&background=4a9a4a&color=fff",
+      },
+      rating: 4.5,
+      isFreshToday: true,
+      stock: 32,
+      location: "1.9 km away",
+      category: "vegetables",
+    },
+    {
+      id: 17,
+      name: "Organic Potatoes",
+      price: 28,
+      unit: "kg",
+      image:
+        "https://images.unsplash.com/photo-1596399730076-4e575ed11b39?w=400&h=400&fit=crop",
+      farmer: {
+        name: "Lakshmi Devi",
+        avatar:
+          "https://ui-avatars.com/api/?name=Lakshmi+Devi&background=4a9a4a&color=fff",
+      },
+      rating: 4.6,
+      isOrganic: true,
+      stock: 55,
+      location: "2.7 km away",
+      category: "vegetables",
+    },
+    {
+      id: 18,
+      name: "Fresh Onions",
+      price: 32,
+      unit: "kg",
+      image:
+        "https://images.unsplash.com/photo-1594485862186-f1c3f4ba9c3f?w=400&h=400&fit=crop",
+      farmer: {
+        name: "Rajendra Rao",
+        avatar:
+          "https://ui-avatars.com/api/?name=Rajendra+Rao&background=4a9a4a&color=fff",
+      },
+      rating: 4.4,
+      stock: 70,
+      location: "3.3 km away",
+      category: "vegetables",
+    },
+    {
+      id: 19,
+      name: "Fresh Lemons",
+      price: 60,
+      unit: "kg",
+      image:
+        "https://media.istockphoto.com/id/871706470/photo/group-of-fresh-lemon-on-an-old-vintage-wooden-table.webp?a=1&b=1&s=612x612&w=0&k=20&c=y-meMhMc9CK-Mtz8vM6JRaIOEeiXPcnbdsGca-KCogM=",
+      farmer: {
+        name: "Satish Kumar",
+        avatar:
+          "https://ui-avatars.com/api/?name=Satish+Kumar&background=4a9a4a&color=fff",
+      },
+      rating: 4.7,
+      stock: 28,
+      location: "4.5 km away",
+      category: "fruits",
+    },
+    {
+      id: 20,
+      name: "Organic Honey",
+      price: 500,
+      unit: "liter",
+      image:
+        "https://images.unsplash.com/photo-1587049352851-8d4e89133924?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687",
+      farmer: {
+        name: "Bhushan Patel",
+        avatar:
+          "https://ui-avatars.com/api/?name=Bhushan+Patel&background=4a9a4a&color=fff",
+      },
+      rating: 4.9,
+      isOrganic: true,
+      isFreshToday: true,
+      stock: 10,
+      location: "7.1 km away",
+      category: "grains",
+    },
+    {
+      id: 21,
+      name: "Fresh Capsicum Mix",
+      price: 65,
+      unit: "kg",
+      image:
+        "https://media.istockphoto.com/id/471197349/photo/red-yellow-and-orange-bell-peppers.webp?a=1&b=1&s=612x612&w=0&k=20&c=37_Fneqp145ff3FHnj593f3An00umQzRd6Yw6Tt8gXM=",
+      farmer: {
+        name: "Kavya Nair",
+        avatar:
+          "https://ui-avatars.com/api/?name=Kavya+Nair&background=4a9a4a&color=fff",
+      },
+      rating: 4.8,
+      stock: 19,
+      location: "2.4 km away",
+      category: "vegetables",
+    },
+    {
+      id: 22,
+      name: "Fresh Grapes",
+      price: 140,
+      unit: "kg",
+      image:
+        "https://images.unsplash.com/photo-1714779044371-f5161c65fd68?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&q=80&w=687",
+      farmer: {
+        name: "Vinay Reddy",
+        avatar:
+          "https://ui-avatars.com/api/?name=Vinay+Reddy&background=4a9a4a&color=fff",
+      },
+      rating: 4.7,
+      isFreshToday: true,
+      stock: 24,
+      location: "5.2 km away",
+      category: "fruits",
+    },
+    {
+      id: 23,
+      name: "Buttermilk",
+      price: 35,
+      unit: "liter",
+      image:
+        "https://images.unsplash.com/photo-1630409346699-79481a79db52?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8YnV0dGVybWlsa3xlbnwwfHwwfHx8MA%3D%3D&auto=format&fit=crop&q=60&w=600",
+      farmer: {
+        name: "Pradeep Singh",
+        avatar:
+          "https://ui-avatars.com/api/?name=Pradeep+Singh&background=4a9a4a&color=fff",
+      },
+      rating: 4.6,
+      stock: 38,
+      location: "2.6 km away",
+      category: "dairy",
+    },
+    {
+      id: 24,
+      name: "Organic Lentils",
+      price: 85,
+      unit: "kg",
+      image:
+        "https://images.unsplash.com/photo-1612504258838-fbf14fe4437d?ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxzZWFyY2h8N3x8b3JnYW5pYyUyMGxlbnRpbHN8ZW58MHx8MHx8fDA%3D&auto=format&fit=crop&q=60&w=600",
+      farmer: {
+        name: "Narendra Kumar",
+        avatar:
+          "https://ui-avatars.com/api/?name=Narendra+Kumar&background=4a9a4a&color=fff",
+      },
+      rating: 4.8,
+      isOrganic: true,
+      stock: 42,
+      location: "6.5 km away",
+      category: "grains",
+    },
+  ];
+
+  const categories = [
+    { id: "all", name: "All Products", count: allProducts.length },
+    {
+      id: "vegetables",
+      name: "Vegetables",
+      count: allProducts.filter((p) => p.category === "vegetables").length,
+    },
+    {
+      id: "fruits",
+      name: "Fruits",
+      count: allProducts.filter((p) => p.category === "fruits").length,
+    },
+    {
+      id: "dairy",
+      name: "Dairy",
+      count: allProducts.filter((p) => p.category === "dairy").length,
+    },
+    {
+      id: "grains",
+      name: "Grains",
+      count: allProducts.filter((p) => p.category === "grains").length,
+    },
+  ];
+
+  // Filter and sort products
+  const filteredProducts = React.useMemo(() => {
+    let filtered = allProducts;
+
+    // Filter by search term
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (product) =>
+          product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          product.farmer.name.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Filter by category
+    if (selectedCategory !== "all") {
+      filtered = filtered.filter(
+        (product) => product.category === selectedCategory
+      );
+    }
+
+    // Sort products
+    filtered.sort((a, b) => {
+      switch (sortBy) {
+        case "price-low":
+          return a.price - b.price;
+        case "price-high":
+          return b.price - a.price;
+        case "rating":
+          return b.rating - a.rating;
+        case "name":
+        default:
+          return a.name.localeCompare(b.name);
+      }
+    });
+
+    return filtered;
+  }, [searchTerm, selectedCategory, sortBy]);
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="mb-8"
+      >
+        <h1 className="text-3xl font-bold text-forest-800 dark:text-forest-100 mb-2">
+          {t("freshProducts")}
+        </h1>
+        <p className="text-forest-600 dark:text-forest-400">
+          {t("discoverFresh")}
+        </p>
+      </motion.div>
+
+      {/* Search and Filters */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="mb-8 space-y-4"
+      >
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-forest-500 dark:text-forest-400 w-5 h-5" />
+          <input
+            type="text"
+            placeholder={t("searchProductsOrFarmers")}
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="input-forest pl-10 w-full md:max-w-md"
+          />
+        </div>
+
+        {/* Filter Controls */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0">
+          {/* Categories */}
+          <div className="flex flex-wrap gap-2">
+            {categories.map((category) => (
+              <button
+                key={category.id}
+                onClick={() => setSelectedCategory(category.id)}
+                className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                  selectedCategory === category.id
+                    ? "bg-forest-500 text-white"
+                    : "bg-forest-100 dark:bg-forest-800 text-forest-700 dark:text-forest-300 hover:bg-forest-200 dark:hover:bg-forest-700"
+                }`}
+              >
+                {category.name} ({category.count})
+              </button>
+            ))}
+          </div>
+
+          {/* Sort and View Controls */}
+          <div className="flex items-center space-x-4">
+            {/* Sort Dropdown */}
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value)}
+                className="input-forest pr-8 text-sm"
+              >
+                <option value="name">{t("sortByName")}</option>
+                <option value="price-low">{t("priceLowToHigh")}</option>
+                <option value="price-high">{t("priceHighToLow")}</option>
+                <option value="rating">{t("rating")}</option>
+              </select>
+              <SortAsc className="absolute right-3 top-1/2 transform -translate-y-1/2 text-forest-500 dark:text-forest-400 w-4 h-4 pointer-events-none" />
+            </div>
+
+            {/* View Mode Toggle */}
+            <div className="flex rounded-lg border border-forest-300 dark:border-forest-700">
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`p-2 rounded-l-lg transition-colors ${
+                  viewMode === "grid"
+                    ? "bg-forest-500 text-white"
+                    : "text-forest-500 dark:text-forest-400 hover:bg-forest-100 dark:hover:bg-forest-800"
+                }`}
+              >
+                <Grid className="w-5 h-5" />
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`p-2 rounded-r-lg transition-colors ${
+                  viewMode === "list"
+                    ? "bg-forest-500 text-white"
+                    : "text-forest-500 dark:text-forest-400 hover:bg-forest-100 dark:hover:bg-forest-800"
+                }`}
+              >
+                <List className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Results Count */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2 }}
+        className="mb-6"
+      >
+        <p className="text-forest-600 dark:text-forest-400">
+          Showing {filteredProducts.length} product
+          {filteredProducts.length !== 1 ? "s" : ""}
+          {selectedCategory !== "all" &&
+            ` in ${categories.find((c) => c.id === selectedCategory)?.name}`}
+          {searchTerm && ` for "${searchTerm}"`}
+        </p>
+      </motion.div>
+
+      {/* Products Grid/List */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.3 }}
+      >
+        {filteredProducts.length > 0 ? (
+          <div
+            className={
+              viewMode === "grid"
+                ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"
+                : "space-y-4"
+            }
+          >
+            {filteredProducts.map((product, index) => (
+              <motion.div
+                key={product.id}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: index * 0.05 }}
+              >
+                {viewMode === "grid" ? (
+                  <ProductCard
+                    product={product}
+                    onAddToCart={(product) => {
+                      addToCart(product, 1);
+                      toast.success(`${product.name} added to cart!`);
+                    }}
+                    onAddToWishlist={(product) =>
+                      console.log("Add to wishlist:", product)
+                    }
+                    onViewDetails={(product) => {
+                      setSelectedProduct(product);
+                      setIsModalOpen(true);
+                    }}
+                  />
+                ) : (
+                  // List view (simplified card)
+                  <div className="card-forest p-4 flex items-center space-x-4">
+                    <img
+                      src={product.image}
+                      alt={product.name}
+                      className="w-16 h-16 rounded-lg object-cover"
+                    />
+                    <div className="flex-1">
+                      <h3 className="font-semibold text-forest-800 dark:text-forest-100">
+                        {product.name}
+                      </h3>
+                      <p className="text-forest-600 dark:text-forest-400 text-sm">
+                        by {product.farmer.name}
+                      </p>
+                      <div className="flex items-center space-x-4 mt-1">
+                        <span className="font-bold text-forest-800 dark:text-forest-100">
+                          ₹{product.price}/{product.unit}
+                        </span>
+                        <span className="text-forest-500 dark:text-forest-400 text-sm">
+                          ★ {product.rating}
+                        </span>
+                      </div>
+                    </div>
+                    <Button 
+                      size="sm"
+                      onClick={() => {
+                        addToCart(product, 1);
+                        toast.success(`${product.name} added to cart!`);
+                      }}
+                    >
+                      Add to Cart
+                    </Button>
+                  </div>
+                )}
+              </motion.div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12">
+            <div className="text-forest-400 dark:text-forest-600 mb-4">
+              <Search className="w-16 h-16 mx-auto" />
+            </div>
+            <h3 className="text-xl font-semibold text-forest-800 dark:text-forest-100 mb-2">
+              No products found
+            </h3>
+            <p className="text-forest-600 dark:text-forest-400">
+              Try adjusting your search or filter criteria
+            </p>
+          </div>
+        )}
+      </motion.div>
+
+      {/* Load More Button (Future Enhancement) */}
+      {filteredProducts.length > 0 && filteredProducts.length >= 12 && (
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.4 }}
+          className="text-center mt-12"
+        >
+          <Button variant="outline" size="lg">
+            Load More Products
+          </Button>
+        </motion.div>
+      )}
+
+      {/* Product Details Modal */}
+      <ProductDetailsModal
+        product={selectedProduct}
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onAddToCart={(product, quantity) => {
+          addToCart(product, quantity);
+          toast.success(`${quantity} ${product.name} added to cart!`);
+        }}
+        onAddToWishlist={(product) => {
+          console.log("Add to wishlist:", product);
+        }}
+      />
+    </div>
+  );
+};
+
+export default ProductsPage;
