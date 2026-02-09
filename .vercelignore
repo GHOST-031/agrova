@@ -1,0 +1,8 @@
+node_modules
+.env
+.env.local
+.git
+*.log
+*.md
+__MACOSX
+backend/node_modules

@@ -154,57 +154,59 @@ app.use((req, res) => {
   });
 });
 
-// Start server
-const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
-  console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
-});
-
-// Socket.io for real-time features (chat, notifications)
-const io = require('socket.io')(server, {
-  cors: {
-    origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-    credentials: true
-  }
-});
-
-// Socket.io connection
-io.on('connection', (socket) => {
-  console.log('👤 User connected:', socket.id);
-
-  // Join user room
-  socket.on('join', (userId) => {
-    socket.join(userId);
-    console.log(`User ${userId} joined their room`);
+// Start server (only in non-serverless environment)
+if (process.env.NODE_ENV !== 'serverless' && require.main === module) {
+  const PORT = process.env.PORT || 5000;
+  const server = app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
   });
 
-  // Handle chat messages
-  socket.on('sendMessage', (data) => {
-    io.to(data.recipientId).emit('receiveMessage', data);
+  // Socket.io for real-time features (chat, notifications)
+  const io = require('socket.io')(server, {
+    cors: {
+      origin: process.env.FRONTEND_URL || 'http://localhost:5173',
+      credentials: true
+    }
   });
 
-  // Handle typing status
-  socket.on('typing', (data) => {
-    io.to(data.recipientId).emit('userTyping', data);
+  // Socket.io connection (only in non-serverless)
+  io.on('connection', (socket) => {
+    console.log('👤 User connected:', socket.id);
+
+    // Join user room
+    socket.on('join', (userId) => {
+      socket.join(userId);
+      console.log(`User ${userId} joined their room`);
+    });
+
+    // Handle chat messages
+    socket.on('sendMessage', (data) => {
+      io.to(data.recipientId).emit('receiveMessage', data);
+    });
+
+    // Handle typing status
+    socket.on('typing', (data) => {
+      io.to(data.recipientId).emit('userTyping', data);
+    });
+
+    // Handle notifications
+    socket.on('sendNotification', (data) => {
+      io.to(data.userId).emit('receiveNotification', data);
+    });
+
+    socket.on('disconnect', () => {
+      console.log('👤 User disconnected:', socket.id);
+    });
   });
 
-  // Handle notifications
-  socket.on('sendNotification', (data) => {
-    io.to(data.userId).emit('receiveNotification', data);
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('SIGTERM received. Shutting down gracefully...');
+    server.close(() => {
+      console.log('Process terminated');
+      mongoose.connection.close();
+    });
   });
-
-  socket.on('disconnect', () => {
-    console.log('👤 User disconnected:', socket.id);
-  });
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-  console.log('SIGTERM received. Shutting down gracefully...');
-  server.close(() => {
-    console.log('Process terminated');
-    mongoose.connection.close();
-  });
-});
+}
 
 module.exports = app;
