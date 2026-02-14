@@ -40,18 +40,23 @@ app.use(cors({
       return callback(null, true);
     }
     
-    const allowedOrigins = process.env.NODE_ENV === 'production'
-      ? [process.env.FRONTEND_URL].filter(Boolean)  // Only production domain
-      : [
-          'http://localhost:5173',
-          'http://localhost:5174',
-          'http://localhost:5175',
-          process.env.FRONTEND_URL
-        ].filter(Boolean);
+    // Explicitly add production domains
+    const allowedOrigins = [
+      'https://agrova-six.vercel.app',  // Always allow production frontend
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'http://localhost:5175'
+    ];
+    
+    // Add FRONTEND_URL env var if set
+    if (process.env.FRONTEND_URL && !allowedOrigins.includes(process.env.FRONTEND_URL)) {
+      allowedOrigins.push(process.env.FRONTEND_URL);
+    }
     
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
+      console.warn(`CORS rejected origin: ${origin}`);
       callback(new Error(`Origin ${origin} not allowed by CORS`));
     }
   },
