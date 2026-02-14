@@ -1,5 +1,10 @@
 // API Base URL - works on both local and production
-export const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+// For production on Vercel, use Render backend
+const isDevelopment = import.meta.env.DEV;
+const productionApiUrl = "https://agrova-eoow.onrender.com/api";
+const developmentApiUrl = import.meta.env.VITE_API_URL || "http://localhost:5001/api";
+
+export const API_URL = isDevelopment ? developmentApiUrl : productionApiUrl;
 
 // Get auth token from localStorage
 const getToken = () => {
