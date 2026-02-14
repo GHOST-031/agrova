@@ -1,9 +1,7 @@
 import React, { createContext, useContext, useReducer } from "react";
+import { API_URL } from "../utils/api";
 
 const AuthContext = createContext();
-
-// API Base URL
-const API_URL = "http://localhost:5001/api";
 
 // User types
 export const USER_TYPES = {
