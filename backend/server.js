@@ -100,28 +100,33 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Database connection - Lazy load for Vercel serverless
+// Database connection - Connect immediately if not in serverless mode
 let mongoConnected = false;
 const connectDB = async () => {
   if (mongoConnected) return;
   if (!process.env.MONGODB_URI) {
-    console.error('❌ MONGODB_URI not found in environment variables');
-    return;
+    throw new Error('MONGODB_URI not found in environment variables');
   }
   try {
-    await mongoose.connect(process.env.MONGODB_URI);
+    await mongoose.connect(process.env.MONGODB_URI, {
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    });
     mongoConnected = true;
     console.log('✅ MongoDB Connected');
   } catch (err) {
     console.error('❌ MongoDB Connection Error:', err.message);
+    throw err;
   }
 };
 
-// Connect on first request
-app.use(async (req, res, next) => {
-  await connectDB();
-  next();
-});
+// Connect to database immediately on startup (unless serverless)
+if (process.env.NODE_ENV !== 'serverless') {
+  connectDB().catch(err => {
+    console.error('Failed to connect to MongoDB on startup:', err.message);
+    process.exit(1);
+  });
+}
 
 // API Routes with specific rate limiting
 app.use('/api/auth/login', authLimiter);
@@ -179,7 +184,9 @@ if (process.env.NODE_ENV !== 'serverless' && require.main === module) {
     console.log(`🚀 Server running on port ${PORT} in ${process.env.NODE_ENV} mode`);
   });
 
-  // Socket.io for real-time features (chat, notifications)
+  // Socket.io for real-time features (chat, notifications) - NOT available in serverless
+  // Commented out for Vercel serverless compatibility
+  /*
   const io = require('socket.io')(server, {
     cors: {
       origin: process.env.FRONTEND_URL || 'http://localhost:5173',
@@ -216,6 +223,7 @@ if (process.env.NODE_ENV !== 'serverless' && require.main === module) {
       console.log('👤 User disconnected:', socket.id);
     });
   });
+  */
 
   // Graceful shutdown
   process.on('SIGTERM', () => {
