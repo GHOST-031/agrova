@@ -26,20 +26,9 @@ const Footer = () => {
       ],
     },
     {
-      title: "For Farmers",
-      links: [
-        { name: "Sell Your Products", path: "/farmer/register" },
-        { name: "Farmer Guidelines", path: "/farmer/guidelines" },
-        { name: "Pricing Guide", path: "/farmer/pricing" },
-        { name: "Success Stories", path: "/farmer/stories" },
-        { name: "Support Center", path: "/farmer/support" },
-      ],
-    },
-    {
       title: "Support",
       links: [
         { name: "Customer Help", path: "/support" },
-        { name: "Shipping Info", path: "/shipping" },
         { name: "Return Policy", path: "/returns" },
         { name: "FAQ", path: "/faq" },
         { name: "Contact Us", path: "/contact" },
@@ -51,8 +40,6 @@ const Footer = () => {
         { name: "About Us", path: "/about" },
         { name: "Our Mission", path: "/mission" },
         { name: "Sustainability", path: "/sustainability" },
-        { name: "Careers", path: "/careers" },
-        { name: "Press Kit", path: "/press" },
       ],
     },
   ];
@@ -60,13 +47,13 @@ const Footer = () => {
   const contactInfo = [
     {
       icon: Mail,
-      text: "hello@fresh2consumer.com",
-      href: "mailto:hello@fresh2consumer.com",
+      text: "hello@agrova.com",
+      href: "mailto:hello@agrova.com",
     },
     {
       icon: Phone,
-      text: "+1 (555) 123-4567",
-      href: "tel:+15551234567",
+      text: "+91 98765 43210",
+      href: "tel:+919876543210",
     },
     {
       icon: MapPin,

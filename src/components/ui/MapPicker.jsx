@@ -84,22 +84,45 @@ const MapPicker = ({
   const [position, setPosition] = useState(null);
   const [loading, setLoading] = useState(true);
   const [address, setAddress] = useState("");
+  const [geocodeData, setGeocodeData] = useState(null); // Store full geocoding data
   const [mapCenter, setMapCenter] = useState(initialPosition || { lat: 28.6139, lng: 77.209 });
   const [mapKey, setMapKey] = useState(0); // Force map re-render
 
   // Reverse geocode to get address from coordinates
   const reverseGeocode = async (lat, lng) => {
     try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+      
       const response = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`,
+        { 
+          signal: controller.signal,
+          headers: {
+            'Accept-Language': 'en'
+          }
+        }
       );
+      
+      clearTimeout(timeoutId);
+      
+      if (!response.ok) {
+        console.warn(`Reverse geocoding failed with status ${response.status}`);
+        return null;
+      }
+      
       const data = await response.json();
       if (data.display_name) {
         setAddress(data.display_name);
+        setGeocodeData(data); // Store full geocoding data
         return data;
       }
     } catch (error) {
-      console.error("Error reverse geocoding:", error);
+      if (error.name === 'AbortError') {
+        console.warn("Reverse geocoding timed out");
+      } else {
+        console.warn("Error reverse geocoding:", error.message);
+      }
     }
     return null;
   };
@@ -125,60 +148,125 @@ const MapPicker = ({
     }
   }, [position]);
 
-  const handleGetCurrentLocation = () => {
+  const handleGetCurrentLocation = async () => {
     setLoading(true);
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const newPosition = {
-            lat: pos.coords.latitude,
-            lng: pos.coords.longitude,
-          };
-          setPosition(newPosition);
-          setMapCenter(newPosition);
-          setMapKey(prev => prev + 1); // Force map to re-center
-          reverseGeocode(newPosition.lat, newPosition.lng);
-          toast.success("Location detected successfully!");
-          setLoading(false);
-        },
-        (error) => {
-          console.error("Error getting location:", error);
-          let errorMessage = "Could not get your current location.";
-          
-          switch(error.code) {
-            case error.PERMISSION_DENIED:
-              errorMessage = "Location access denied. Please enable location permissions in your browser settings.";
-              break;
-            case error.POSITION_UNAVAILABLE:
-              errorMessage = "Location information is unavailable.";
-              break;
-            case error.TIMEOUT:
-              errorMessage = "Location request timed out. Please try again.";
-              break;
-          }
-          
-          toast.error(errorMessage);
-          setLoading(false);
-        },
-        {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0
-        }
-      );
-    } else {
+    
+    if (!navigator.geolocation) {
       toast.error("Geolocation is not supported by your browser");
+      setLoading(false);
+      return;
+    }
+
+    try {
+      // First attempt: Try with high accuracy
+      let position;
+      let usedFallback = false;
+      
+      try {
+        position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            resolve,
+            reject,
+            {
+              enableHighAccuracy: true,
+              timeout: 15000,
+              maximumAge: 0
+            }
+          );
+        });
+      } catch (highAccuracyError) {
+        // If high accuracy fails, try with lower accuracy (fallback)
+        console.log("High accuracy failed, trying with lower accuracy...", highAccuracyError);
+        usedFallback = true;
+        toast("Trying alternative location method...", { 
+          icon: "🔄",
+          duration: 2000 
+        });
+        
+        position = await new Promise((resolve, reject) => {
+          navigator.geolocation.getCurrentPosition(
+            resolve,
+            reject,
+            {
+              enableHighAccuracy: false,
+              timeout: 20000,
+              maximumAge: 300000 // Accept cached position up to 5 minutes old
+            }
+          );
+        });
+      }
+
+      const newPosition = {
+        lat: position.coords.latitude,
+        lng: position.coords.longitude,
+      };
+      
+      setPosition(newPosition);
+      setMapCenter(newPosition);
+      setMapKey(prev => prev + 1); // Force map to re-center
+      await reverseGeocode(newPosition.lat, newPosition.lng);
+      
+      const accuracyMsg = usedFallback 
+        ? "(Using approximate location)" 
+        : "(Precise location)";
+      toast.success(`Location detected ${accuracyMsg}!`);
+      setLoading(false);
+    } catch (error) {
+      console.error("Error getting location:", error);
+      let errorMessage = "Could not get your current location.";
+      
+      if (error.code) {
+        switch(error.code) {
+          case error.PERMISSION_DENIED:
+            errorMessage = "Location access denied. Please enable location permissions in your browser settings.";
+            break;
+          case error.POSITION_UNAVAILABLE:
+            errorMessage = "Location information is unavailable. Please enable location services.";
+            break;
+          case error.TIMEOUT:
+            errorMessage = "Location request timed out. Please try again or move closer to a window.";
+            break;
+          default:
+            errorMessage = "Error: " + error.message;
+        }
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
       setLoading(false);
     }
   };
 
   const handleConfirmLocation = () => {
     if (onLocationSelect) {
-      onLocationSelect({
+      // Extract address details from geocoding data
+      const addressDetails = geocodeData?.address || {};
+      
+      // Build the location object with all extracted details
+      const locationData = {
         latitude: position.lat,
         longitude: position.lng,
         address: address,
-      });
+        // Extract street/building info
+        street: [
+          addressDetails.building,
+          addressDetails.house_number,
+          addressDetails.road,
+          addressDetails.neighbourhood
+        ].filter(Boolean).join(", "),
+        // Extract city info (city -> town -> village)
+        city: addressDetails.city || addressDetails.town || addressDetails.village || "",
+        // Extract state
+        state: addressDetails.state || "",
+        // Extract zipcode/postcode
+        zipcode: addressDetails.postcode || "",
+        // Additional useful info
+        country: addressDetails.country || "",
+      };
+      
+      console.log("Location data:", locationData);
+      onLocationSelect(locationData);
     }
   };
 

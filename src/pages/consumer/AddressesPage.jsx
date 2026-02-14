@@ -146,9 +146,13 @@ const AddressesPage = () => {
       ...prev,
       latitude: location.latitude,
       longitude: location.longitude,
+      street: location.street || prev.street,
+      city: location.city || prev.city,
+      state: location.state || prev.state,
+      zipcode: location.zipcode || prev.zipcode,
     }));
     setShowMap(false);
-    toast.success("Location selected!");
+    toast.success("Location selected! Address fields auto-filled.");
   };
 
   const handleSubmit = (e) => {

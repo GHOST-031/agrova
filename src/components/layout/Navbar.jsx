@@ -334,8 +334,7 @@ const Navbar = () => {
         toast(errorMessage, { icon: "📍", duration: 4000 });
       }
       
-      // Only log for debugging - error codes: 1=DENIED, 2=UNAVAILABLE, 3=TIMEOUT
-      console.log("Location detection:", error.code === 2 ? "Position unavailable (GPS issue)" : error.code === 3 ? "Timeout (user can enter manually)" : `Code ${error.code}`);
+      console.log("Geolocation info:", error.code === 3 ? "Timeout - user can enter address manually" : error);
     } finally {
       setIsLoadingLocation(false);
     }

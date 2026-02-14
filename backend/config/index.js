@@ -1,4 +1,4 @@
-# Environment-specific configuration
+// Environment-specific configuration
 module.exports = {
   development: {
     port: process.env.PORT || 5001,

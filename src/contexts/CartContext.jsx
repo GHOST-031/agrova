@@ -60,12 +60,19 @@ export const CartProvider = ({ children }) => {
   const fetchCart = async () => {
     try {
       const token = localStorage.getItem("f2c_token");
-      const user = localStorage.getItem("f2c_user");
+      const userStr = localStorage.getItem("f2c_user");
       
-      if (token && user) {
-        dispatch({ type: "SET_LOADING", payload: true });
-        const data = await api.getCart();
-        dispatch({ type: "SET_CART", payload: data.data });
+      if (token && userStr) {
+        const user = JSON.parse(userStr);
+        // Cart is only for consumers
+        if (user.userType === 'consumer') {
+          dispatch({ type: "SET_LOADING", payload: true });
+          const data = await api.getCart();
+          dispatch({ type: "SET_CART", payload: data.data });
+        } else {
+          // Clear cart for non-consumer users
+          dispatch({ type: "CLEAR_CART" });
+        }
       } else {
         // Clear cart if no user is logged in
         dispatch({ type: "CLEAR_CART" });

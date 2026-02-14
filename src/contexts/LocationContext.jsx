@@ -72,40 +72,41 @@ export const useLocation = () => {
 export const LocationProvider = ({ children }) => {
   const [state, dispatch] = useReducer(locationReducer, initialState);
 
-  // Load addresses from backend on mount and when user changes
-  useEffect(() => {
-    const loadAddresses = async () => {
-      const token = localStorage.getItem("f2c_token");
-      const user = localStorage.getItem("f2c_user");
+  // Load addresses from backend
+  const loadAddresses = async () => {
+    const token = localStorage.getItem("f2c_token");
+    const user = localStorage.getItem("f2c_user");
+    
+    if (!token || !user) {
+      // Clear addresses if no user is logged in
+      dispatch({ type: "SET_ADDRESSES", payload: [] });
+      dispatch({ type: "SET_SELECTED_ADDRESS", payload: null });
+      return;
+    }
+
+    try {
+      const response = await api.getAddresses();
+      const addresses = (response.data || []).map(addr => ({
+        ...addr,
+        id: addr._id || addr.id // Normalize to ensure 'id' exists
+      }));
+      dispatch({ type: "SET_ADDRESSES", payload: addresses });
       
-      if (!token || !user) {
-        // Clear addresses if no user is logged in
-        dispatch({ type: "SET_ADDRESSES", payload: [] });
-        dispatch({ type: "SET_SELECTED_ADDRESS", payload: null });
-        return;
+      // Set the default address as selected
+      const defaultAddress = addresses.find((addr) => addr.isDefault);
+      if (defaultAddress) {
+        dispatch({ type: "SET_SELECTED_ADDRESS", payload: defaultAddress });
       }
+    } catch (error) {
+      console.error("Error loading addresses:", error);
+      // Clear addresses on error
+      dispatch({ type: "SET_ADDRESSES", payload: [] });
+      dispatch({ type: "SET_SELECTED_ADDRESS", payload: null });
+    }
+  };
 
-      try {
-        const response = await api.getAddresses();
-        const addresses = (response.data || []).map(addr => ({
-          ...addr,
-          id: addr._id || addr.id // Normalize to ensure 'id' exists
-        }));
-        dispatch({ type: "SET_ADDRESSES", payload: addresses });
-        
-        // Set the default address as selected
-        const defaultAddress = addresses.find((addr) => addr.isDefault);
-        if (defaultAddress) {
-          dispatch({ type: "SET_SELECTED_ADDRESS", payload: defaultAddress });
-        }
-      } catch (error) {
-        console.error("Error loading addresses:", error);
-        // Clear addresses on error
-        dispatch({ type: "SET_ADDRESSES", payload: [] });
-        dispatch({ type: "SET_SELECTED_ADDRESS", payload: null });
-      }
-    };
-
+  // Load addresses on mount and when user changes
+  useEffect(() => {
     loadAddresses();
     
     // Re-fetch addresses when storage changes (user login/logout)
@@ -253,6 +254,7 @@ export const LocationProvider = ({ children }) => {
     getAddressById,
     getDefaultAddress,
     getCurrentLocation,
+    loadAddresses, // Expose for App.jsx coordination
   };
 
   return <LocationContext.Provider value={value}>{children}</LocationContext.Provider>;

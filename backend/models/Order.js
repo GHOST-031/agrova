@@ -6,10 +6,19 @@ const orderSchema = new mongoose.Schema({
     unique: true,
     required: true
   },
+  parentOrderId: {
+    type: String,
+    description: 'Links child orders to parent order when order is split by farmer'
+  },
   user: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true
+  },
+  farmer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User',
+    description: 'If split by farmer, this field identifies which farmer this order belongs to'
   },
   items: [{
     product: {
@@ -113,6 +122,8 @@ const orderSchema = new mongoose.Schema({
 // Indexes for performance
 orderSchema.index({ orderId: 1 }, { unique: true });
 orderSchema.index({ user: 1, createdAt: -1 });
+orderSchema.index({ farmer: 1, createdAt: -1 });
+orderSchema.index({ parentOrderId: 1 });
 orderSchema.index({ 'items.farmer': 1, status: 1, createdAt: -1 });
 orderSchema.index({ status: 1, createdAt: -1 });
 orderSchema.index({ 'payment.status': 1 });

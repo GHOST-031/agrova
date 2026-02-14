@@ -46,10 +46,19 @@ export const WishlistProvider = ({ children }) => {
   const fetchWishlist = async () => {
     try {
       const token = localStorage.getItem("f2c_token");
-      if (token) {
-        dispatch({ type: "SET_LOADING", payload: true });
-        const data = await api.getWishlist();
-        dispatch({ type: "SET_WISHLIST", payload: data.data.products || [] });
+      const userStr = localStorage.getItem("f2c_user");
+      
+      if (token && userStr) {
+        const user = JSON.parse(userStr);
+        // Wishlist is only for consumers
+        if (user.userType === 'consumer') {
+          dispatch({ type: "SET_LOADING", payload: true });
+          const data = await api.getWishlist();
+          dispatch({ type: "SET_WISHLIST", payload: data.data.products || [] });
+        } else {
+          // Clear wishlist for non-consumer users
+          dispatch({ type: "CLEAR_WISHLIST" });
+        }
       }
     } catch (error) {
       console.error("Error loading wishlist:", error);

@@ -1,0 +1,33 @@
+# Environment Variables for Vercel
+
+## Copy these to Vercel Dashboard → Settings → Environment Variables
+## Apply to: Production, Preview, and Development
+
+## Backend Variables (Required)
+MONGODB_URI=mongodb+srv://vermakrishansh:K03112005v@agrova.cggerci.mongodb.net/agrova?retryWrites=true&w=majority
+NODE_ENV=production
+JWT_SECRET=oG9vroo5QQW607zpgGXbBA0c0MPWp/Hvpr0Twe3d7CU=
+JWT_EXPIRE=30d
+FRONTEND_URL=https://your-app.vercel.app
+
+## Frontend Variable (Add after first deployment)
+## Replace 'your-app' with your actual Vercel project URL
+VITE_API_URL=https://your-app.vercel.app/api
+
+## Optional - Payment Gateway (Razorpay)
+RAZORPAY_KEY_ID=
+RAZORPAY_KEY_SECRET=
+
+## Optional - Image Storage (Cloudinary)
+CLOUDINARY_CLOUD_NAME=
+CLOUDINARY_API_KEY=
+CLOUDINARY_API_SECRET=
+
+## Optional - Email Service
+EMAIL_SERVICE=gmail
+EMAIL_USER=
+EMAIL_PASSWORD=
+EMAIL_FROM=noreply@agrova.com
+
+## Optional - Stripe (Alternative Payment)
+STRIPE_SECRET_KEY=

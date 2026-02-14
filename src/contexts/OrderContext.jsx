@@ -30,17 +30,26 @@ export const OrderProvider = ({ children }) => {
   const fetchOrders = async () => {
     try {
       const token = localStorage.getItem('f2c_token');
-      const user = localStorage.getItem('f2c_user');
+      const userStr = localStorage.getItem('f2c_user');
       
-      if (token && user) {
+      if (token && userStr) {
         setLoading(true);
-        const data = await api.getMyOrders();
-        // Normalize orders to have both id and _id for compatibility
-        const normalizedOrders = (data.data || []).map(order => ({
-          ...order,
-          id: order._id || order.id,
-        }));
-        setOrders(normalizedOrders);
+        const user = JSON.parse(userStr);
+        
+        // Only fetch consumer orders for consumers
+        // Farmers manage their orders on the farmer dashboard
+        if (user.userType === 'consumer') {
+          const data = await api.getMyOrders();
+          // Normalize orders to have both id and _id for compatibility
+          const normalizedOrders = (data.data || []).map(order => ({
+            ...order,
+            id: order._id || order.id,
+          }));
+          setOrders(normalizedOrders);
+        } else {
+          // Skip order fetching for farmers - they use farmer-specific endpoints
+          setOrders([]);
+        }
       } else {
         // Clear orders if no user is logged in
         setOrders([]);
@@ -72,11 +81,18 @@ export const OrderProvider = ({ children }) => {
     try {
       setLoading(true);
       const data = await api.createOrder(orderData);
-      const newOrder = data.data;
       
-      setOrders(prev => [newOrder, ...prev]);
-      toast.success('Order placed successfully!');
-      return newOrder;
+      // Handle new multi-farmer order format
+      if (data.orders && Array.isArray(data.orders)) {
+        // Multiple orders created (split by farmer)
+        setOrders(prev => [...data.orders, ...prev]);
+        return data; // Return full response with all orders and summary
+      } else {
+        // Single order format (legacy)
+        const newOrder = data.data;
+        setOrders(prev => [newOrder, ...prev]);
+        return newOrder;
+      }
     } catch (error) {
       toast.error(error.message || 'Failed to create order');
       throw error;

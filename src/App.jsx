@@ -22,7 +22,12 @@ import SignupPage from "./pages/auth/SignupPage";
 import ProductsPage from "./pages/products/ProductsPage";
 import ProductDetailsPage from "./pages/products/ProductDetailsPage";
 import AboutPage from "./pages/AboutPage";
-import ContactPage from "./pages/ContactPage";
+import MissionPage from "./pages/MissionPage";
+import SustainabilityPage from "./pages/SustainabilityPage";
+import SupportPage from "./pages/SupportPage";
+import ReturnPolicyPage from "./pages/ReturnPolicyPage";
+import FAQPage from "./pages/FAQPage";
+import ContactUsPage from "./pages/ContactUsPage";
 import ConsumerChatPage from "./pages/consumer/ChatPage";
 import FarmerChatPage from "./pages/farmer/ChatPage";
 
@@ -55,7 +60,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 
 // App Content Component (needs to be inside providers to access contexts)
 function AppContent() {
-  const { user, token } = useAuth();
+  const { user, isAuthenticated } = useAuth();
   const { loadCart } = useCart();
   const { loadWishlist } = useWishlist();
   const { loadAddresses } = useLocationContext();
@@ -64,7 +69,7 @@ function AppContent() {
 
   useEffect(() => {
     const loadUserData = async () => {
-      if (user && token) {
+      if (user && isAuthenticated) {
         setIsInitializing(true);
         
         try {
@@ -86,7 +91,7 @@ function AppContent() {
     
     loadUserData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, token]); // Only run when user/token changes
+  }, [user, isAuthenticated]); // Only run when user or auth status changes
 
   // Show loading screen while initializing user data
   if (isInitializing) {
@@ -105,7 +110,12 @@ function AppContent() {
           <Route path="/products" element={<ProductsPage />} />
           <Route path="/products/:id" element={<ProductDetailsPage />} />
           <Route path="/about" element={<AboutPage />} />
-          <Route path="/contact" element={<ContactPage />} />
+          <Route path="/mission" element={<MissionPage />} />
+          <Route path="/sustainability" element={<SustainabilityPage />} />
+          <Route path="/support" element={<SupportPage />} />
+          <Route path="/returns" element={<ReturnPolicyPage />} />
+          <Route path="/faq" element={<FAQPage />} />
+          <Route path="/contact" element={<ContactUsPage />} />
 
           {/* Consumer Routes */}
           <Route
@@ -311,7 +321,7 @@ function App() {
               <LocationProvider>
                 <PaymentProvider>
                   <OrderProvider>
-                    <Router>
+                    <Router future={{ v7_relativeSplatPath: true }}>
                       <AppContent />
                     </Router>
                   </OrderProvider>

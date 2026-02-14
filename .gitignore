@@ -19,6 +19,9 @@ dist-ssr
 backend/.env
 backend/.env.local
 
+# Database exports (local backups)
+backend/data-export/
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

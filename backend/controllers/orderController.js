@@ -115,8 +115,8 @@ exports.createOrder = async (req, res) => {
       });
     }
 
-    // Generate unique order ID
-    const orderId = `ORD${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
+    // Generate unique parent order ID (for linking split orders)
+    const parentOrderId = `ORD${Date.now()}${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
     
     // Handle payment data (support both old and new format)
     const paymentData = payment || {
@@ -126,35 +126,76 @@ exports.createOrder = async (req, res) => {
       paidAt: paymentDetails?.status === 'success' ? new Date() : null
     };
     
-    const orderData = {
-      orderId,
-      user: req.user._id,
-      items: processedItems,
-      deliveryAddress,
-      payment: paymentData,
-      pricing: pricing || {
-        subtotal: calculatedSubtotal,
-        delivery: 0,
-        discount: 0,
-        tax: 0,
-        total: calculatedSubtotal
-      },
-      status: paymentData.status === 'success' || paymentData.method === 'cod' ? 'confirmed' : 'pending'
-    };
+    // GROUP ITEMS BY FARMER - Create separate orders for each farmer
+    const itemsByFarmer = {};
+    processedItems.forEach(item => {
+      const farmerId = item.farmer.toString();
+      if (!itemsByFarmer[farmerId]) {
+        itemsByFarmer[farmerId] = [];
+      }
+      itemsByFarmer[farmerId].push(item);
+    });
     
-    const [order] = await Order.create([orderData], { session });
+    const createdOrders = [];
+    const farmerIds = Object.keys(itemsByFarmer);
+    
+    // Create a separate order for each farmer
+    for (const farmerId of farmerIds) {
+      const farmerItems = itemsByFarmer[farmerId];
+      
+      // Calculate subtotal for this farmer's items
+      const farmerSubtotal = farmerItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      // Distribute delivery and discount proportionally
+      const farmerDelivery = (pricing?.delivery || 0) * (farmerSubtotal / calculatedSubtotal);
+      const farmerDiscount = (pricing?.discount || 0) * (farmerSubtotal / calculatedSubtotal);
+      const farmerTax = (pricing?.tax || 0) * (farmerSubtotal / calculatedSubtotal);
+      const farmerTotal = farmerSubtotal + farmerDelivery + farmerTax - farmerDiscount;
+      
+      const orderData = {
+        orderId: `${parentOrderId}-F${farmerIds.indexOf(farmerId) + 1}`,
+        parentOrderId, // Link to parent order
+        user: req.user._id,
+        farmer: farmerId, // Identify which farmer this order belongs to
+        items: farmerItems,
+        deliveryAddress,
+        payment: paymentData,
+        pricing: {
+          subtotal: farmerSubtotal,
+          delivery: farmerDelivery,
+          discount: farmerDiscount,
+          tax: farmerTax,
+          total: farmerTotal
+        },
+        status: paymentData.status === 'success' || paymentData.method === 'cod' ? 'confirmed' : 'pending'
+      };
+      
+      const [order] = await Order.create([orderData], { session });
+      createdOrders.push(order);
+    }
     
     // Commit transaction
     await session.commitTransaction();
     
-    // Populate after transaction
-    await order.populate('user', 'name email phoneNumber');
-    await order.populate('items.product', 'name price images');
-    await order.populate('items.farmer', 'name email farmDetails');
+    // Populate all orders after transaction
+    for (let order of createdOrders) {
+      await order.populate('user', 'name email phoneNumber');
+      await order.populate('items.product', 'name price images');
+      await order.populate('items.farmer', 'name');
+      await order.populate('farmer', 'name email farmDetails');
+    }
     
+    // Return parent order summary with all child orders
     res.status(201).json({
       success: true,
-      data: order
+      message: `Order created and split across ${createdOrders.length} farmer(s)`,
+      parentOrderId,
+      orders: createdOrders,
+      summary: {
+        totalOrders: createdOrders.length,
+        totalAmount: createdOrders.reduce((sum, order) => sum + order.pricing.total, 0),
+        items: createdOrders.reduce((sum, order) => sum + order.items.length, 0),
+      }
     });
   } catch (error) {
     await session.abortTransaction();
@@ -225,7 +266,8 @@ exports.getOrder = async (req, res) => {
     const order = await Order.findById(req.params.id)
       .populate('user', 'name email phoneNumber')
       .populate('items.product', 'name price images description')
-      .populate('items.farmer', 'name email phoneNumber farmDetails');
+      .populate('items.farmer', 'name email phoneNumber farmDetails')
+      .populate('farmer', 'name email phoneNumber farmDetails'); // Populate farmer field for split orders
     
     if (!order) {
       return res.status(404).json({
@@ -236,10 +278,18 @@ exports.getOrder = async (req, res) => {
     
     // Make sure user is order owner or farmer or admin
     const isOwner = order.user._id.toString() === req.user._id.toString();
-    const isFarmer = order.items.some(item => item.farmer._id.toString() === req.user._id.toString());
+    
+    // Check if farmer owns this order (NEW: split order farmer field)
+    const isFarmerOwner = order.farmer && order.farmer._id.toString() === req.user._id.toString();
+    
+    // Check if farmer has items in this order (LEGACY: items.farmer field)
+    const hasItemsFromFarmer = order.items && order.items.some(item => 
+      item.farmer && item.farmer._id.toString() === req.user._id.toString()
+    );
+    
     const isAdmin = req.user.userType === 'admin';
     
-    if (!isOwner && !isFarmer && !isAdmin) {
+    if (!isOwner && !isFarmerOwner && !hasItemsFromFarmer && !isAdmin) {
       return res.status(401).json({
         success: false,
         message: 'Not authorized to view this order'
@@ -288,15 +338,47 @@ exports.getMyOrders = async (req, res) => {
 // @access  Private (Farmer)
 exports.getFarmerOrders = async (req, res) => {
   try {
-    const orders = await Order.find({ 'items.farmer': req.user._id })
+    const farmerId = req.user._id;
+    
+    // Query to find orders that belong specifically to this farmer
+    // (after order splitting by farmer logic)
+    const orders = await Order.find({ 
+      farmer: farmerId 
+    })
       .populate('user', 'name email phoneNumber')
-      .populate('items.product', 'name price images')
+      .populate('items.product', 'name price images stock')
+      .populate('items.farmer', 'name')
       .sort('-createdAt');
+    
+    // Also handle legacy orders where farmer field might not be set
+    // but items belong to this farmer (for backward compatibility)
+    const legacyOrders = await Order.find({
+      farmer: { $exists: false },
+      'items.farmer': farmerId
+    })
+      .populate('user', 'name email phoneNumber')
+      .populate('items.product', 'name price images stock')
+      .populate('items.farmer', 'name')
+      .sort('-createdAt');
+    
+    // Filter legacy orders to only include items belonging to this farmer
+    const filteredLegacyOrders = legacyOrders.map(order => {
+      const farmerItems = order.items.filter(item => 
+        item.farmer && item.farmer._id.toString() === farmerId.toString()
+      );
+      if (farmerItems.length > 0) {
+        order.items = farmerItems;
+        return order;
+      }
+      return null;
+    }).filter(order => order !== null);
+    
+    const allOrders = [...orders, ...filteredLegacyOrders];
     
     res.json({
       success: true,
-      count: orders.length,
-      data: orders
+      count: allOrders.length,
+      data: allOrders
     });
   } catch (error) {
     res.status(500).json({
@@ -331,10 +413,13 @@ exports.updateOrderStatus = async (req, res) => {
     }
     
     // Check authorization
-    const isFarmer = order.items.some(item => item.farmer.toString() === req.user._id.toString());
+    // New logic: Check if order.farmer matches (for split orders)
+    // Fallback: Check if any item's farmer matches (for legacy orders)
+    const isFarmerOwner = order.farmer && order.farmer.toString() === req.user._id.toString();
+    const hasItemsFromFarmer = order.items.some(item => item.farmer && item.farmer.toString() === req.user._id.toString());
     const isAdmin = req.user.userType === 'admin';
     
-    if (!isFarmer && !isAdmin) {
+    if (!isFarmerOwner && !hasItemsFromFarmer && !isAdmin) {
       return res.status(401).json({
         success: false,
         message: 'Not authorized to update this order'

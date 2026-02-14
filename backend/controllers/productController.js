@@ -32,7 +32,19 @@ exports.getProducts = async (req, res) => {
     
     // Filters
     if (category) query.category = category;
-    if (farmer) query.farmer = farmer;
+    
+    // Filter by farmer - handle both string and ObjectId formats
+    if (farmer) {
+      const mongoose = require('mongoose');
+      try {
+        // Try to convert to ObjectId if it's a valid MongoDB ID
+        query.farmer = new mongoose.Types.ObjectId(farmer);
+      } catch (e) {
+        // If conversion fails, filter by string as fallback
+        query.farmer = farmer;
+      }
+    }
+    
     if (minPrice || maxPrice) {
       query.price = {};
       if (minPrice) query.price.$gte = Number(minPrice);

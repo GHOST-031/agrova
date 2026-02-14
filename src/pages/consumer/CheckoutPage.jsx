@@ -66,21 +66,24 @@ const CheckoutPage = () => {
   };
 
   const startPayment = () => {
-    if (!selectedAddress && addresses.length === 0) {
+    // Validate cart items first
+    if (!items || items.length === 0) {
+      toast.error("Your cart is empty");
+      navigate('/consumer/cart');
+      return;
+    }
+
+    // Check if user has any addresses
+    if (addresses.length === 0) {
       toast.error("Please add a delivery address first");
       navigate('/consumer/addresses');
       return;
     }
+
+    // Check if user has selected an address
     if (!selectedAddress) {
       toast.error("Please select a delivery address");
       setAddressModalOpen(true);
-      return;
-    }
-
-    // Validate cart items
-    if (!items || items.length === 0) {
-      toast.error("Your cart is empty");
-      navigate('/consumer/cart');
       return;
     }
 
@@ -147,14 +150,20 @@ const CheckoutPage = () => {
       const order = await createOrder(orderData);
       console.log('Order created successfully:', order);
       
+      // Handle new multi-farmer order response format
+      const isMultiFarmerOrder = order.orders && Array.isArray(order.orders);
+      if (isMultiFarmerOrder) {
+        toast.success(`Order placed successfully! Split across ${order.orders.length} farmer(s)`);
+      } else {
+        toast.success('Order placed successfully!');
+      }
+      
       // Clear the cart only after successful order creation
       await clearCart();
       
       setCompletedPayment(payment);
       setPaymentSuccess(true);
       setPaymentOpen(false);
-      
-      toast.success('Order placed successfully!');
       
       // Navigate to orders after showing success message
       setTimeout(() => {

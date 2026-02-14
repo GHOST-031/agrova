@@ -29,7 +29,7 @@ const productSchema = new mongoose.Schema({
   category: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Category',
-    required: true
+    required: false
   },
   images: [{
     url: String,
@@ -38,7 +38,7 @@ const productSchema = new mongoose.Schema({
   farmer: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
-    required: true
+    required: false
   },
   stock: {
     type: Number,

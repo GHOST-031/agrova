@@ -160,7 +160,13 @@ const FarmerProducts = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
-      const response = await api.getProducts({ farmer: user?._id });
+      const farmerId = user?.id || user?._id;
+      if (!farmerId) {
+        toast.error("User ID not found");
+        setLoading(false);
+        return;
+      }
+      const response = await api.getProducts({ farmer: farmerId });
       setProducts(response.data || []);
     } catch (error) {
       console.error("Error fetching products:", error);
