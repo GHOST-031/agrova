@@ -61,9 +61,14 @@ app.use(cors({
     }
   },
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  preflightContinue: false,
+  optionsSuccessStatus: 200
 }));
+
+// Explicitly handle preflight requests
+app.options('*', cors());
 
 // Rate limiting - Different limits for different endpoint types
 const authLimiter = rateLimit({
