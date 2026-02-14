@@ -100,10 +100,28 @@ if (process.env.NODE_ENV === 'development') {
   app.use(morgan('dev'));
 }
 
-// Database connection
-mongoose.connect(process.env.MONGODB_URI)
-.then(() => console.log('✅ MongoDB Connected'))
-.catch((err) => console.error('❌ MongoDB Connection Error:', err));
+// Database connection - Lazy load for Vercel serverless
+let mongoConnected = false;
+const connectDB = async () => {
+  if (mongoConnected) return;
+  if (!process.env.MONGODB_URI) {
+    console.error('❌ MONGODB_URI not found in environment variables');
+    return;
+  }
+  try {
+    await mongoose.connect(process.env.MONGODB_URI);
+    mongoConnected = true;
+    console.log('✅ MongoDB Connected');
+  } catch (err) {
+    console.error('❌ MongoDB Connection Error:', err.message);
+  }
+};
+
+// Connect on first request
+app.use(async (req, res, next) => {
+  await connectDB();
+  next();
+});
 
 // API Routes with specific rate limiting
 app.use('/api/auth/login', authLimiter);
